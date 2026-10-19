@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "714315771254",
+    "project_id": "blood-donation-692cb",
+    "storage_bucket": "blood-donation-692cb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:714315771254:android:191a1bcd2dc992ff389e57",
+        "android_client_info": {
+          "package_name": "com.taha.blood_donation_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "714315771254-74c8uvmajq5guq84ks06q21ht0p9mls8.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.taha.blood_donation_app",
+            "certificate_hash": "4dfeda5bc6d184906d5da44a04676f9202dbb0fe"
+          }
+        },
+        {
+          "client_id": "714315771254-hjmrvfn6f12eop21j5la5aanen0j4k7m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaDJx446VueURqNqvpxAy4lS-yx4yKN60"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "714315771254-hjmrvfn6f12eop21j5la5aanen0j4k7m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

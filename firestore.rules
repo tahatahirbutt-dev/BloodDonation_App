@@ -1,0 +1,286 @@
+rules_version = '2';
+
+// Security rules are the ONLY server-side enforcement this app has on the
+// free Spark plan (no Cloud Functions), so they validate data shape, not
+// just identity. Anything not matched below is denied.
+//
+// Collections today:
+//   users/{uid}   full private profile, readable and writable only by its
+//                 owner. Holds the phone number.
+//   donors/{uid}  public directory entry (no phone, no exact donation
+//                 date), readable by verified users, written only by its
+//                 owner. Present only while the person is visible.
+//   bloodRequests/{id}
+//                 a request for blood. Readable by verified users, created
+//                 by the requester, and afterwards changeable only from
+//                 "open" to "fulfilled" / "cancelled", only by them.
+//   bloodRequests/{id}/responses/{donorUid}
+//                 a donor's "I can help". Holds the donor's phone number,
+//                 so only that donor and the request's requester can read
+//                 it. Created only for an open request, by a compatible,
+//                 available, eligible donor, and only with the data that
+//                 is in their own private profile.
+//
+// Identity: a user counts only with a verified email. Google sign-in
+// accounts are always verified; email/password accounts must verify first
+// and refresh their ID token afterwards (reload() + getIdToken(true)).
+// This is the stand-in for phone OTP, which needs the paid Blaze plan.
+// If phone sign-in is added later, revisit isVerifiedUser().
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isVerifiedUser() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(uid) {
+      return isVerifiedUser() && request.auth.uid == uid;
+    }
+
+    function isBoundedString(value, minLen, maxLen) {
+      return value is string
+        && value.size() >= minLen
+        && value.size() <= maxLen;
+    }
+
+    // Must match BloodGroup.name in the Dart enum.
+    function isBloodGroup(value) {
+      return value in [
+        'aPositive', 'aNegative', 'bPositive', 'bNegative',
+        'abPositive', 'abNegative', 'oPositive', 'oNegative'
+      ];
+    }
+
+    // Generous box around Islamabad + Rawalpindi: rejects junk
+    // coordinates without having to mirror the Dart location catalog.
+    function isTwinCitiesPoint(d) {
+      return d.latitude is number && d.longitude is number
+        && d.latitude >= 33.0 && d.latitude <= 34.2
+        && d.longitude >= 72.4 && d.longitude <= 73.6;
+    }
+
+    // ---- blood compatibility -------------------------------------------
+    // Mirrors BloodGroup in Dart (antigens A, B and Rh-D): a donor can give
+    // to a recipient only if the recipient carries every antigen the donor
+    // has. rules_test checks all 64 pairs.
+    function hasA(g) {
+      return g in ['aPositive', 'aNegative', 'abPositive', 'abNegative'];
+    }
+
+    function hasB(g) {
+      return g in ['bPositive', 'bNegative', 'abPositive', 'abNegative'];
+    }
+
+    function isRhPositive(g) {
+      return g in ['aPositive', 'bPositive', 'abPositive', 'oPositive'];
+    }
+
+    function canDonateTo(donor, recipient) {
+      return (!hasA(donor) || hasA(recipient))
+        && (!hasB(donor) || hasB(recipient))
+        && (!isRhPositive(donor) || isRhPositive(recipient));
+    }
+
+    // Client clocks can be wrong, so a client-supplied time only has to be
+    // within a day of the server's. Anything further off is rejected.
+    function isNearNow(t) {
+      return t is timestamp
+        && t > request.time - duration.value(1, 'd')
+        && t < request.time + duration.value(1, 'd');
+    }
+
+    match /users/{uid} {
+      function hasValidShape(d) {
+        return d.keys().hasOnly([
+            'name', 'phone', 'bloodGroup', 'locationId', 'latitude',
+            'longitude', 'geohash', 'lastDonationDate', 'isAvailable',
+            'isVisible', 'createdAt'
+          ])
+          && d.keys().hasAll([
+            'name', 'phone', 'bloodGroup', 'locationId', 'latitude',
+            'longitude', 'geohash', 'lastDonationDate', 'isAvailable',
+            'isVisible', 'createdAt'
+          ])
+          && isBoundedString(d.name, 2, 60)
+          && d.phone is string && d.phone.matches('^\\+923[0-9]{9}$')
+          && isBloodGroup(d.bloodGroup)
+          && isBoundedString(d.locationId, 1, 40)
+          && isTwinCitiesPoint(d)
+          && isBoundedString(d.geohash, 9, 9)
+          && (d.lastDonationDate == null
+              || (d.lastDonationDate is timestamp
+                  && d.lastDonationDate <= request.time))
+          && d.isAvailable is bool
+          && d.isVisible is bool
+          && d.createdAt is timestamp;
+      }
+
+      // `get` only: no one can list or enumerate users.
+      allow get: if isOwner(uid);
+      allow create: if isOwner(uid) && hasValidShape(request.resource.data);
+      allow update: if isOwner(uid)
+        && hasValidShape(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    match /donors/{uid} {
+      function hasValidShape(d) {
+        return d.keys().hasOnly([
+            'name', 'bloodGroup', 'locationId', 'latitude', 'longitude',
+            'geohash', 'isAvailable', 'eligibleFrom'
+          ])
+          && d.keys().hasAll([
+            'name', 'bloodGroup', 'locationId', 'latitude', 'longitude',
+            'geohash', 'isAvailable'
+          ])
+          && isBoundedString(d.name, 2, 60)
+          && isBloodGroup(d.bloodGroup)
+          && isBoundedString(d.locationId, 1, 40)
+          && isTwinCitiesPoint(d)
+          && isBoundedString(d.geohash, 9, 9)
+          && d.isAvailable is bool
+          && (d.get('eligibleFrom', null) == null
+              || d.eligibleFrom is timestamp);
+      }
+
+      allow get: if isVerifiedUser();
+      // Queries must carry an explicit limit of at most 50. A query with
+      // no limit makes `request.query.limit` null, the comparison errors,
+      // and the query is denied, which forces every client to paginate.
+      allow list: if isVerifiedUser() && request.query.limit <= 50;
+      allow create, update: if isOwner(uid)
+        && hasValidShape(request.resource.data);
+      allow delete: if isOwner(uid);
+    }
+
+    match /bloodRequests/{requestId} {
+      function hasValidShape(d) {
+        return d.keys().hasOnly([
+            'requesterUid', 'requesterName', 'bloodGroup', 'units',
+            'urgency', 'hospitalId', 'latitude', 'longitude', 'geohash',
+            'note', 'status', 'createdAt', 'expiresAt'
+          ])
+          && d.keys().hasAll([
+            'requesterUid', 'requesterName', 'bloodGroup', 'units',
+            'urgency', 'hospitalId', 'latitude', 'longitude', 'geohash',
+            'note', 'status', 'createdAt', 'expiresAt'
+          ])
+          && d.requesterUid is string
+          && isBoundedString(d.requesterName, 2, 60)
+          && isBloodGroup(d.bloodGroup)
+          && d.units is int && d.units >= 1 && d.units <= 10
+          && d.urgency in ['critical', 'urgent', 'planned']
+          && isBoundedString(d.hospitalId, 1, 40)
+          && isTwinCitiesPoint(d)
+          && isBoundedString(d.geohash, 9, 9)
+          && d.note is string && d.note.size() <= 200
+          && d.status in ['open', 'fulfilled', 'cancelled']
+          && d.createdAt is timestamp
+          && d.expiresAt is timestamp;
+      }
+
+      // The name on a request must be the requester's real profile name.
+      function nameMatchesProfile(d) {
+        return get(/databases/$(database)/documents/users/$(request.auth.uid))
+          .data.name == d.requesterName;
+      }
+
+      allow get: if isVerifiedUser();
+      allow list: if isVerifiedUser() && request.query.limit <= 50;
+
+      allow create: if isVerifiedUser()
+        && request.resource.data.requesterUid == request.auth.uid
+        && hasValidShape(request.resource.data)
+        && request.resource.data.status == 'open'
+        && isNearNow(request.resource.data.createdAt)
+        && request.resource.data.expiresAt > request.resource.data.createdAt
+        && request.resource.data.expiresAt
+            <= request.resource.data.createdAt + duration.value(8, 'd')
+        && nameMatchesProfile(request.resource.data);
+
+      // The requester may close an open request, and change nothing else.
+      allow update: if isOwner(resource.data.requesterUid)
+        && resource.data.status == 'open'
+        && request.resource.data.status in ['fulfilled', 'cancelled']
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status']);
+
+      allow delete: if false;
+
+      match /responses/{donorUid} {
+        function parentRequest() {
+          return get(/databases/$(database)/documents/bloodRequests/$(requestId))
+            .data;
+        }
+
+        function hasValidResponseShape(d) {
+          return d.keys().hasOnly([
+              'donorUid', 'donorName', 'phone', 'bloodGroup', 'locationId',
+              'respondedAt'
+            ])
+            && d.keys().hasAll([
+              'donorUid', 'donorName', 'phone', 'bloodGroup', 'locationId',
+              'respondedAt'
+            ])
+            && d.donorUid == donorUid
+            && isBoundedString(d.donorName, 2, 60)
+            && d.phone is string && d.phone.matches('^\\+923[0-9]{9}$')
+            && isBloodGroup(d.bloodGroup)
+            && isBoundedString(d.locationId, 1, 40)
+            && d.respondedAt is timestamp;
+        }
+
+        // The shared details must be exactly what is in the donor's own
+        // private profile, and the donor must currently be available and
+        // past the 90-day interval (the same rule as DonationEligibility).
+        function matchesDonorProfile(d) {
+          let u = get(/databases/$(database)/documents/users/$(request.auth.uid))
+            .data;
+          return u.name == d.donorName
+            && u.phone == d.phone
+            && u.bloodGroup == d.bloodGroup
+            && u.locationId == d.locationId
+            && u.isAvailable == true
+            && (u.lastDonationDate == null
+                || u.lastDonationDate + duration.value(90, 'd')
+                    <= request.time);
+        }
+
+        function requestAcceptsDonor(d) {
+          let r = parentRequest();
+          return r.status == 'open'
+            && r.expiresAt > request.time
+            && r.requesterUid != request.auth.uid
+            && canDonateTo(d.bloodGroup, r.bloodGroup);
+        }
+
+        // The donor reads their own response; the requester reads all
+        // responses to their request. Nobody else reads any.
+        allow get: if isVerifiedUser()
+          && (request.auth.uid == donorUid
+              || request.auth.uid == parentRequest().requesterUid);
+        allow list: if isVerifiedUser()
+          && request.query.limit <= 50
+          && request.auth.uid == parentRequest().requesterUid;
+
+        allow create: if isOwner(donorUid)
+          && hasValidResponseShape(request.resource.data)
+          && isNearNow(request.resource.data.respondedAt)
+          && matchesDonorProfile(request.resource.data)
+          && requestAcceptsDonor(request.resource.data);
+
+        allow update: if false;
+
+        // A donor can withdraw their own offer.
+        allow delete: if isOwner(donorUid);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
