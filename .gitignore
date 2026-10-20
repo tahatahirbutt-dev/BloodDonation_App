@@ -47,4 +47,12 @@ app.*.map.json
 
 #otherfiles
 COPILOT_PROMPT.md
+CI_README.md
+CALL_BUTTON_PROMPT.md
+PLAY_STORE_CHECKLIST.md
+RELEASE_PREP_PROMPT.md
+SLICE_NOTES.md
 
+android/key.properties
+*.jks
+*.keystore

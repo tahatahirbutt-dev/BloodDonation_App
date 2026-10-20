@@ -1,4 +1,4 @@
-package com.taha.blood_donation_app
+package com.tahabutt.blooddonation
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -41,6 +41,43 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:714315771254:android:5cc94c26bcf54259389e57",
+        "android_client_info": {
+          "package_name": "com.tahabutt.blooddonation"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "714315771254-avidvnj250h5me16gh16a3ibup1lvr07.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.tahabutt.blooddonation",
+            "certificate_hash": "4dfeda5bc6d184906d5da44a04676f9202dbb0fe"
+          }
+        },
+        {
+          "client_id": "714315771254-hjmrvfn6f12eop21j5la5aanen0j4k7m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBaDJx446VueURqNqvpxAy4lS-yx4yKN60"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "714315771254-hjmrvfn6f12eop21j5la5aanen0j4k7m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

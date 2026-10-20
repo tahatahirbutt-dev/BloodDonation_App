@@ -10,7 +10,7 @@ class App extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Blood Donation',
+      title: 'Blood Donor ISB',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(colorSchemeSeed: Colors.red, useMaterial3: true),
       home: const AppGate(),
