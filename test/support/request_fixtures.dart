@@ -47,8 +47,7 @@ BloodRequest sampleRequest({
 Future<void> seedRequest(
   BloodRequestRemoteDataSource dataSource,
   BloodRequest request,
-) =>
-    dataSource.create(request.id, BloodRequestMapper.toMap(request));
+) => dataSource.create(request.id, BloodRequestMapper.toMap(request));
 
 /// A donor-directory document for a donor living at a catalog location.
 Map<String, dynamic> directoryEntry({

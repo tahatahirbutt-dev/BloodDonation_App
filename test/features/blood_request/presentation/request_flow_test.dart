@@ -88,8 +88,9 @@ void main() {
   }
 
   group('the feed', () {
-    testWidgets('shows requests this donor can help and hides the rest',
-        (tester) async {
+    testWidgets('shows requests this donor can help and hides the rest', (
+      tester,
+    ) async {
       await seedRequest(requests, sampleRequest(id: 'for-me'));
       await seedRequest(
         requests,
@@ -101,10 +102,7 @@ void main() {
       );
       await seedRequest(
         requests,
-        sampleRequest(
-          id: 'closed',
-          status: RequestStatus.fulfilled,
-        ),
+        sampleRequest(id: 'closed', status: RequestStatus.fulfilled),
       );
 
       await launch(tester);
@@ -127,8 +125,12 @@ void main() {
 
       await launch(tester);
 
-      final critical = tester.getTopLeft(find.byKey(RequestCard.keyFor('critical')));
-      final planned = tester.getTopLeft(find.byKey(RequestCard.keyFor('planned')));
+      final critical = tester.getTopLeft(
+        find.byKey(RequestCard.keyFor('critical')),
+      );
+      final planned = tester.getTopLeft(
+        find.byKey(RequestCard.keyFor('planned')),
+      );
       expect(critical.dy, lessThan(planned.dy));
     });
 
@@ -158,8 +160,9 @@ void main() {
   });
 
   group('helping with a request', () {
-    testWidgets('I can help asks first, then shares the number',
-        (tester) async {
+    testWidgets('I can help asks first, then shares the number', (
+      tester,
+    ) async {
       await seedRequest(requests, sampleRequest());
       await launch(tester);
       await openRequest(tester, 'req-1');
@@ -208,8 +211,9 @@ void main() {
       expect(find.byKey(RequestDetailPage.respondButtonKey), findsOneWidget);
     });
 
-    testWidgets('a donor still in the 90-day wait cannot respond',
-        (tester) async {
+    testWidgets('a donor still in the 90-day wait cannot respond', (
+      tester,
+    ) async {
       await seedRequest(requests, sampleRequest());
       await launch(tester, lastDonationDate: DateTime(2026, 2, 1));
       await openRequest(tester, 'req-1');
@@ -317,7 +321,11 @@ void main() {
     Future<void> seedOwnRequestWithOffer() async {
       await seedRequest(
         requests,
-        sampleRequest(id: 'mine', requesterUid: 'uid-1', requesterName: 'Taha Tahir'),
+        sampleRequest(
+          id: 'mine',
+          requesterUid: 'uid-1',
+          requesterName: 'Taha Tahir',
+        ),
       );
       final response = DonorResponseFixture.offer(requestId: 'mine');
       await responses.create(
@@ -335,8 +343,7 @@ void main() {
       expect(find.text('You have not posted any requests'), findsOneWidget);
     });
 
-    testWidgets('shows who offered to help, with their number',
-        (tester) async {
+    testWidgets('shows who offered to help, with their number', (tester) async {
       await seedOwnRequestWithOffer();
       await launch(tester);
 
@@ -347,8 +354,9 @@ void main() {
       expect(find.textContaining('3111234567'), findsOneWidget);
     });
 
-    testWidgets('the copy button puts the number on the clipboard',
-        (tester) async {
+    testWidgets('the copy button puts the number on the clipboard', (
+      tester,
+    ) async {
       await seedOwnRequestWithOffer();
       await launch(tester);
       String? copied;
@@ -362,8 +370,10 @@ void main() {
         },
       );
       addTearDown(
-        () => tester.binding.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null),
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
       );
       await openTab(tester, HomeShell.myRequestsTabKey);
       await openRequest(tester, 'mine');
@@ -408,8 +418,9 @@ void main() {
       );
     });
 
-    testWidgets('going back from the confirmation changes nothing',
-        (tester) async {
+    testWidgets('going back from the confirmation changes nothing', (
+      tester,
+    ) async {
       await seedOwnRequestWithOffer();
       await launch(tester);
       await openTab(tester, HomeShell.myRequestsTabKey);
@@ -423,8 +434,9 @@ void main() {
       expect(requests.documentById('mine')!['status'], RequestStatus.open.name);
     });
 
-    testWidgets('shows an error with Try again when loading fails',
-        (tester) async {
+    testWidgets('shows an error with Try again when loading fails', (
+      tester,
+    ) async {
       await launch(tester);
       requests.failWith = const NetworkFailure();
 
@@ -441,8 +453,9 @@ void main() {
     });
   });
 
-  testWidgets('signing out while a request is open returns to sign-in',
-      (tester) async {
+  testWidgets('signing out while a request is open returns to sign-in', (
+    tester,
+  ) async {
     await seedRequest(requests, sampleRequest());
     await launch(tester);
     await openRequest(tester, 'req-1');

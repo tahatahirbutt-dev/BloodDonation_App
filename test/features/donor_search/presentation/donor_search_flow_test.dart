@@ -51,8 +51,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  void seedDonor(String uid, BloodGroup group, String locationId,
-      {String? name}) {
+  void seedDonor(
+    String uid,
+    BloodGroup group,
+    String locationId, {
+    String? name,
+  }) {
     directory.seed(
       uid,
       directoryEntry(
@@ -82,8 +86,18 @@ void main() {
   testWidgets('lists compatible donors nearest first, without any phone '
       'number', (tester) async {
     seedDonor('near', BloodGroup.oNegative, 'g9_islamabad', name: 'Near Donor');
-    seedDonor('far', BloodGroup.bPositive, 'afit_rawalpindi', name: 'Far Donor');
-    seedDonor('wrong', BloodGroup.aPositive, 'g9_islamabad', name: 'Wrong Group');
+    seedDonor(
+      'far',
+      BloodGroup.bPositive,
+      'afit_rawalpindi',
+      name: 'Far Donor',
+    );
+    seedDonor(
+      'wrong',
+      BloodGroup.aPositive,
+      'g9_islamabad',
+      name: 'Wrong Group',
+    );
     await launch(tester);
     await openSearch(tester);
 
@@ -118,8 +132,9 @@ void main() {
     expect(find.byKey(DonorSearchTab.resultKeyFor('far')), findsNothing);
   });
 
-  testWidgets('shows an empty state and offers to post a request',
-      (tester) async {
+  testWidgets('shows an empty state and offers to post a request', (
+    tester,
+  ) async {
     await launch(tester);
     await openSearch(tester);
 
