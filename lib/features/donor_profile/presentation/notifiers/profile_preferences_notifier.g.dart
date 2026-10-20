@@ -49,7 +49,7 @@ final class ProfilePreferencesProvider
 }
 
 String _$profilePreferencesHash() =>
-    r'c3e9f5820ce4035e583612a9b630b629cd35960f';
+    r'25a9e1716c1ea162977414fc22d3ede22c3c02d2';
 
 /// The two switches on the profile tab: "available to donate" and
 /// "show me in donor search". Saves through the same `SaveUserProfile`

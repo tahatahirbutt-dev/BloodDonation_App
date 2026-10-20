@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:blood_donation_app/core/error/result.dart';
+import 'package:blood_donation_app/core/platform/phone_dialer_provider.dart';
 import 'package:blood_donation_app/core/presentation/failure_ui.dart';
 import 'package:blood_donation_app/core/presentation/widgets/empty_view.dart';
 import 'package:blood_donation_app/core/presentation/widgets/message_banner.dart';
@@ -29,6 +31,7 @@ class MyRequestDetailPage extends ConsumerWidget {
   static const Key backKey = Key('myRequest.back');
 
   static Key copyKeyFor(String donorUid) => Key('myRequest.copy.$donorUid');
+  static Key callKeyFor(String donorUid) => Key('myRequest.call.$donorUid');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -179,13 +182,13 @@ class MyRequestDetailPage extends ConsumerWidget {
   }
 }
 
-class _ResponseTile extends StatelessWidget {
+class _ResponseTile extends ConsumerWidget {
   const _ResponseTile({required this.response});
 
   final DonorResponse response;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Card(
       child: ListTile(
         title: Text(response.donorName),
@@ -200,14 +203,34 @@ class _ResponseTile extends StatelessWidget {
           ],
         ),
         isThreeLine: true,
-        trailing: IconButton(
-          key: MyRequestDetailPage.copyKeyFor(response.donorUid),
-          tooltip: 'Copy number',
-          icon: const Icon(Icons.copy),
-          onPressed: () => unawaited(_copy(context, response.phone.e164)),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              key: MyRequestDetailPage.copyKeyFor(response.donorUid),
+              tooltip: 'Copy number',
+              icon: const Icon(Icons.copy),
+              onPressed: () => unawaited(_copy(context, response.phone.e164)),
+            ),
+            IconButton(
+              key: MyRequestDetailPage.callKeyFor(response.donorUid),
+              tooltip: 'Call',
+              icon: const Icon(Icons.call),
+              onPressed: () =>
+                  unawaited(_call(context, ref, response.phone.e164)),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _call(BuildContext context, WidgetRef ref, String number) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final result = await ref.read(phoneDialerProvider).dial(number);
+    if (result is Err<void>) {
+      messenger.showSnackBar(SnackBar(content: Text(result.failure.message)));
+    }
   }
 
   Future<void> _copy(BuildContext context, String number) async {

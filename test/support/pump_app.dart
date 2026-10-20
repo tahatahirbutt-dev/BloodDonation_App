@@ -6,6 +6,8 @@ import 'package:blood_donation_app/app.dart';
 import 'package:blood_donation_app/core/id/id_generator.dart';
 import 'package:blood_donation_app/core/id/id_generator_provider.dart';
 import 'package:blood_donation_app/core/providers/retry_policy.dart';
+import 'package:blood_donation_app/core/platform/phone_dialer.dart';
+import 'package:blood_donation_app/core/platform/phone_dialer_provider.dart';
 import 'package:blood_donation_app/core/time/clock_provider.dart';
 import 'package:blood_donation_app/features/auth/auth_providers.dart';
 import 'package:blood_donation_app/features/auth/data/datasources/in_memory_auth_data_source.dart';
@@ -33,6 +35,7 @@ Future<void> pumpApp(
   InMemoryDonorDirectoryDataSource? directory,
   IdGenerator? ids,
   DateTime? now,
+  PhoneDialer? phoneDialer,
 }) async {
   // A tall viewport so long forms never need scrolling in tests.
   tester.view.physicalSize = const Size(900, 2400);
@@ -56,6 +59,8 @@ Future<void> pumpApp(
         ),
         if (ids != null) idGeneratorProvider.overrideWithValue(ids),
         if (now != null) clockProvider.overrideWithValue(FixedClock(now)),
+        if (phoneDialer != null)
+          phoneDialerProvider.overrideWithValue(phoneDialer),
       ],
       child: const App(),
     ),
