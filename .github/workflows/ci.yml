@@ -47,10 +47,8 @@ jobs:
           path: coverage/lcov.info
           if-no-files-found: ignore
 
-      # If android/app/google-services.json is committed, nothing to do. If it is
-      # gitignored, add it once as the secret GOOGLE_SERVICES_JSON_BASE64
-      # (PowerShell: [Convert]::ToBase64String([IO.File]::ReadAllBytes("android\app\google-services.json")) | Set-Clipboard).
-      # Without the file the APK step is skipped; analyze and test still run.
+      # google-services.json is intentionally not committed. Store its base64
+      # contents in the GOOGLE_SERVICES_JSON_BASE64 Actions secret to enable APK builds.
       - name: Restore google-services.json
         id: gsj
         env:
@@ -94,7 +92,7 @@ jobs:
 
       - name: Install
         working-directory: rules_test
-        run: npm install
+        run: npm ci
 
       - name: Run rules tests on the emulator
         working-directory: rules_test
